@@ -25,12 +25,22 @@ type RetrievedDoc = {
   score: number;
 };
 
+const DEMO_SCENARIO =
+  "Acme Retail sends a nightly customer audience file from AWS S3 containing approximately 2 million records. Their engineering team also wants to send individual customer profile updates throughout the day using an API. Their security team requires SAML-based single sign-on for administrators and wants confirmation of SOC 2 Type II compliance. After audience processing completes, their internal application needs to receive an automatic notification. Finally, they need processed audiences activated to AdSphere DSP within a guaranteed two-hour SLA.";
+
 export default function Home() {
   const [requirements, setRequirements] = useState("");
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [retrievedDocs, setRetrievedDocs] = useState<RetrievedDoc[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  function loadDemoScenario() {
+    setRequirements(DEMO_SCENARIO);
+    setResult(null);
+    setRetrievedDocs([]);
+    setError("");
+  }
 
   async function analyzeRequirements() {
     setError("");
@@ -81,37 +91,41 @@ export default function Home() {
         </p>
 
         <div className="mt-10 rounded-xl border border-slate-800 bg-slate-900 p-6">
-          <label
-            htmlFor="requirements"
-            className="block text-sm font-semibold text-slate-200"
-          >
-            Customer Requirements / Discovery Notes
-          </label>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <label
+                htmlFor="requirements"
+                className="block text-sm font-semibold text-slate-200"
+              >
+                Customer Requirements / Discovery Notes
+              </label>
 
-          <p className="mt-1 text-sm text-slate-400">
-            Paste discovery notes, customer requirements, or RFP questions below.
-          </p>
+              <p className="mt-1 text-sm text-slate-400">
+                Paste discovery notes, customer requirements, or RFP questions below.
+              </p>
+            </div>
+
+            <span className="w-fit rounded-full border border-slate-700 bg-slate-950 px-3 py-1 text-xs font-medium text-slate-400">
+              Fictional demo data
+            </span>
+          </div>
 
           <textarea
             id="requirements"
             rows={10}
             value={requirements}
             onChange={(event) => setRequirements(event.target.value)}
-            placeholder="Example: The customer needs nightly S3 ingestion..."
+            placeholder="Paste customer requirements here, or load the demo scenario..."
             className="mt-4 w-full resize-none rounded-lg border border-slate-700 bg-slate-950 p-4 text-slate-200 placeholder:text-slate-600 focus:border-blue-500 focus:outline-none"
           />
 
           <div className="mt-4 flex justify-between">
             <button
               type="button"
-              onClick={() =>
-                setRequirements(
-                  "The customer needs to ingest CSV files from AWS S3 every night. Each file will contain approximately 2 million records. The customer requires outbound webhook notifications when audience processing completes. The customer also requires the platform to maintain SOC 2 Type II certification."
-                )
-              }
+              onClick={loadDemoScenario}
               className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800"
             >
-              Load Example
+              Load Demo Scenario
             </button>
 
             <button

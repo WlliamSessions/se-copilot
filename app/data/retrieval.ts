@@ -6,7 +6,7 @@ const openai = new OpenAI({
 });
 
 const SIMILARITY_THRESHOLD = 0.4;
-const MAX_RESULTS = 3;
+const MAX_RESULTS = 6;
 
 type EmbeddedDoc = (typeof audienceFlowDocs)[number] & {
   embedding: number[];

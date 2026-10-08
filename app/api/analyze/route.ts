@@ -8,7 +8,11 @@ const openai = new OpenAI({
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const requirements = body.requirements;
+
+    const requirements =
+      typeof body.requirements === "string"
+        ? body.requirements.trim()
+        : "";
 
     if (!requirements) {
       return Response.json(
@@ -19,16 +23,19 @@ export async function POST(request: Request) {
 
     const relevantDocs = await retrieveRelevantDocs(requirements);
 
-    const documentationContext = relevantDocs
-      .map(
-        (doc) => `
+    const documentationContext =
+      relevantDocs.length > 0
+        ? relevantDocs
+            .map(
+              (doc) => `
 DOCUMENT: ${doc.title}
 CATEGORY: ${doc.category}
 
 ${doc.content}
 `
-      )
-      .join("\n---\n");
+            )
+            .join("\n---\n")
+        : "No relevant AudienceFlow documentation was retrieved for these customer requirements.";
 
     const response = await openai.responses.create({
       model: "gpt-6-luna",
@@ -48,6 +55,11 @@ For each customer requirement:
   capability is not supported.
 - Use "Needs Discovery" when the documentation does not provide enough
   information to determine support.
+
+If no relevant AudienceFlow documentation was retrieved, classify the
+requirement as "Needs Discovery". Explain that the available documentation
+does not establish whether the capability is supported. Do not imply that
+AudienceFlow has no product documentation.
 
 Explain the reasoning behind each classification.
 
