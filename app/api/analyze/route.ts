@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { audienceFlowDocs } from "@/app/data/audienceflow-docs";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -19,13 +20,28 @@ export async function POST(request: Request) {
     const response = await openai.responses.create({
       model: "gpt-6-luna",
 
-      input: `You are a Sales Engineer performing technical discovery.
+      input: `You are a Sales Engineer for AudienceFlow.
 
-Analyze the customer requirements below.
+Your job is to analyze customer requirements using the AudienceFlow product documentation provided below.
 
-Do not assume unsupported product capabilities. If something cannot be determined from the information provided, identify it as an open question.
+Use the documentation as the source of truth.
 
-Customer requirements:
+Rules:
+- Do not invent AudienceFlow capabilities.
+- Mark a requirement as "Supported" only when the documentation explicitly supports it.
+- Mark a requirement as "Unsupported" when the documentation explicitly states that it is not supported.
+- Mark a requirement as "Needs Discovery" when the documentation does not provide enough information to determine support.
+- Explain why each requirement received its status.
+- Identify important technical considerations.
+- Generate useful follow-up discovery questions.
+- Identify risks, gaps, assumptions, or unresolved issues.
+
+AUDIENCEFLOW PRODUCT DOCUMENTATION:
+
+${audienceFlowDocs}
+
+CUSTOMER REQUIREMENTS:
+
 ${requirements}`,
 
       text: {
@@ -39,24 +55,50 @@ ${requirements}`,
               overallAssessment: {
                 type: "string",
               },
-              requirements: {
+
+              requirementAnalysis: {
                 type: "array",
                 items: {
-                  type: "string",
+                  type: "object",
+                  properties: {
+                    requirement: {
+                      type: "string",
+                    },
+                    status: {
+                      type: "string",
+                      enum: [
+                        "Supported",
+                        "Unsupported",
+                        "Needs Discovery",
+                      ],
+                    },
+                    explanation: {
+                      type: "string",
+                    },
+                  },
+                  required: [
+                    "requirement",
+                    "status",
+                    "explanation",
+                  ],
+                  additionalProperties: false,
                 },
               },
+
               technicalConsiderations: {
                 type: "array",
                 items: {
                   type: "string",
                 },
               },
+
               discoveryQuestions: {
                 type: "array",
                 items: {
                   type: "string",
                 },
               },
+
               risks: {
                 type: "array",
                 items: {
@@ -64,13 +106,15 @@ ${requirements}`,
                 },
               },
             },
+
             required: [
               "overallAssessment",
-              "requirements",
+              "requirementAnalysis",
               "technicalConsiderations",
               "discoveryQuestions",
               "risks",
             ],
+
             additionalProperties: false,
           },
         },

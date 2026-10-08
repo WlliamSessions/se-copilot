@@ -2,9 +2,17 @@
 
 import { useState } from "react";
 
-type Analysis = {
+type RequirementStatus = "Supported" | "Unsupported" | "Needs Discovery";
+
+type RequirementAnalysis = {
+  requirement: string;
+  status: RequirementStatus;
+  explanation: string;
+};
+
+type AnalysisResult = {
   overallAssessment: string;
-  requirements: string[];
+  requirementAnalysis: RequirementAnalysis[];
   technicalConsiderations: string[];
   discoveryQuestions: string[];
   risks: string[];
@@ -12,13 +20,13 @@ type Analysis = {
 
 export default function Home() {
   const [requirements, setRequirements] = useState("");
-  const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function analyzeRequirements() {
-    setAnalysis(null);
     setError("");
+    setResult(null);
     setLoading(true);
 
     try {
@@ -28,7 +36,7 @@ export default function Home() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          requirements: requirements,
+          requirements,
         }),
       });
 
@@ -39,7 +47,7 @@ export default function Home() {
         return;
       }
 
-      setAnalysis(data.analysis);
+      setResult(data.analysis);
     } catch {
       setError("Unable to connect to the server.");
     } finally {
@@ -79,7 +87,7 @@ export default function Home() {
             rows={10}
             value={requirements}
             onChange={(event) => setRequirements(event.target.value)}
-            placeholder="Example: The customer needs to send approximately 2 million customer records from AWS S3 every night..."
+            placeholder="Example: The customer needs nightly S3 ingestion..."
             className="mt-4 w-full resize-none rounded-lg border border-slate-700 bg-slate-950 p-4 text-slate-200 placeholder:text-slate-600 focus:border-blue-500 focus:outline-none"
           />
 
@@ -88,7 +96,7 @@ export default function Home() {
               type="button"
               onClick={() =>
                 setRequirements(
-                  "Acme Retail wants to send approximately 2 million customer records to AudienceFlow every night. Their data is stored in AWS S3 as CSV files. They require encryption in transit and at rest. Audiences need to be available in AdSphere DSP by 8:00 AM each morning. They also want to know whether AudienceFlow can support real-time customer updates through an API."
+                  "The customer needs to ingest CSV files from AWS S3 every night. Each file will contain approximately 2 million records. The customer requires outbound webhook notifications when audience processing completes. The customer also requires the platform to maintain SOC 2 Type II certification."
                 )
               }
               className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800"
@@ -107,51 +115,81 @@ export default function Home() {
           </div>
 
           {error && (
-            <div className="mt-6 rounded-lg border border-red-800 bg-red-950/30 p-4">
-              <p className="text-sm font-semibold text-red-400">Error</p>
-              <p className="mt-2 text-slate-300">{error}</p>
+            <div className="mt-6 rounded-lg border border-red-800 bg-red-950/40 p-4 text-red-300">
+              {error}
             </div>
           )}
         </div>
 
-        {analysis && (
+        {result && (
           <div className="mt-8 space-y-6">
             <section className="rounded-xl border border-slate-800 bg-slate-900 p-6">
-              <p className="text-sm font-semibold uppercase tracking-wider text-blue-400">
+              <p className="text-sm font-semibold uppercase tracking-wide text-blue-400">
                 Overall Assessment
               </p>
 
-              <p className="mt-3 leading-7 text-slate-300">
-                {analysis.overallAssessment}
+              <p className="mt-3 leading-7 text-slate-200">
+                {result.overallAssessment}
               </p>
+            </section>
+
+            <section className="rounded-xl border border-slate-800 bg-slate-900 p-6">
+              <h2 className="text-lg font-semibold">Requirement Fit</h2>
+
+              <div className="mt-5 space-y-4">
+                {result.requirementAnalysis.map((item, index) => (
+                  <RequirementCard key={index} item={item} />
+                ))}
+              </div>
             </section>
 
             <div className="grid gap-6 md:grid-cols-2">
               <ResultSection
-                title="Requirements"
-                items={analysis.requirements}
-              />
-
-              <ResultSection
                 title="Technical Considerations"
-                items={analysis.technicalConsiderations}
+                items={result.technicalConsiderations}
               />
 
               <ResultSection
                 title="Discovery Questions"
-                items={analysis.discoveryQuestions}
+                items={result.discoveryQuestions}
                 numbered
               />
 
               <ResultSection
                 title="Risks / Open Questions"
-                items={analysis.risks}
+                items={result.risks}
               />
             </div>
           </div>
         )}
       </div>
     </main>
+  );
+}
+
+function RequirementCard({ item }: { item: RequirementAnalysis }) {
+  const statusStyles = {
+    Supported: "border-emerald-800 bg-emerald-950/30 text-emerald-400",
+    Unsupported: "border-red-800 bg-red-950/30 text-red-400",
+    "Needs Discovery": "border-amber-800 bg-amber-950/30 text-amber-400",
+  };
+
+  return (
+    <div className="rounded-lg border border-slate-700 bg-slate-950 p-5">
+      <div
+        className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${statusStyles[item.status]}`}
+      >
+        {item.status}
+      </div>
+
+      <h3 className="mt-3 font-semibold text-white">
+        {item.requirement}
+      </h3>
+
+      <p className="mt-2 leading-6 text-slate-400">
+        {item.explanation}
+      </p>
+    </div>
   );
 }
 
@@ -166,7 +204,7 @@ function ResultSection({
 }) {
   return (
     <section className="rounded-xl border border-slate-800 bg-slate-900 p-6">
-      <h2 className="text-lg font-semibold text-white">{title}</h2>
+      <h2 className="text-lg font-semibold">{title}</h2>
 
       {numbered ? (
         <ol className="mt-4 list-decimal space-y-3 pl-5 text-slate-300">
@@ -177,11 +215,10 @@ function ResultSection({
           ))}
         </ol>
       ) : (
-        <ul className="mt-4 space-y-3 text-slate-300">
+        <ul className="mt-4 list-disc space-y-3 pl-5 text-slate-300 marker:text-blue-400">
           {items.map((item, index) => (
-            <li key={index} className="flex gap-3 leading-6">
-              <span className="text-blue-400">•</span>
-              <span>{item}</span>
+            <li key={index} className="pl-1 leading-6">
+              {item}
             </li>
           ))}
         </ul>
