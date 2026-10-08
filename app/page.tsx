@@ -18,15 +18,24 @@ type AnalysisResult = {
   risks: string[];
 };
 
+type RetrievedDoc = {
+  id: string;
+  title: string;
+  category: string;
+  score: number;
+};
+
 export default function Home() {
   const [requirements, setRequirements] = useState("");
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [retrievedDocs, setRetrievedDocs] = useState<RetrievedDoc[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function analyzeRequirements() {
     setError("");
     setResult(null);
+    setRetrievedDocs([]);
     setLoading(true);
 
     try {
@@ -48,6 +57,7 @@ export default function Home() {
       }
 
       setResult(data.analysis);
+      setRetrievedDocs(data.retrievedDocs || []);
     } catch {
       setError("Unable to connect to the server.");
     } finally {
@@ -160,6 +170,10 @@ export default function Home() {
                 items={result.risks}
               />
             </div>
+
+            {retrievedDocs.length > 0 && (
+              <SourcesSection docs={retrievedDocs} />
+            )}
           </div>
         )}
       </div>
@@ -223,6 +237,68 @@ function ResultSection({
           ))}
         </ul>
       )}
+    </section>
+  );
+}
+
+function SourcesSection({ docs }: { docs: RetrievedDoc[] }) {
+  return (
+    <section className="rounded-xl border border-slate-800 bg-slate-900 p-6">
+      <div>
+        <p className="text-sm font-semibold uppercase tracking-wide text-blue-400">
+          AI Grounding
+        </p>
+
+        <h2 className="mt-1 text-lg font-semibold">
+          Sources Used
+        </h2>
+
+        <p className="mt-2 text-sm text-slate-400">
+          AudienceFlow documentation retrieved using semantic similarity and
+          provided to the AI for this assessment.
+        </p>
+      </div>
+
+      <div className="mt-5 space-y-3">
+        {docs.map((doc, index) => {
+          const relevance = Math.round(doc.score * 100);
+
+          return (
+            <div
+              key={doc.id}
+              className="rounded-lg border border-slate-700 bg-slate-950 p-4"
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-slate-500">
+                      #{index + 1}
+                    </span>
+
+                    <h3 className="font-semibold text-slate-200">
+                      {doc.title}
+                    </h3>
+                  </div>
+
+                  <p className="mt-1 text-sm text-slate-500">
+                    {doc.category}
+                  </p>
+                </div>
+
+                <div className="sm:text-right">
+                  <p className="text-xs uppercase tracking-wide text-slate-500">
+                    Semantic Relevance
+                  </p>
+
+                  <p className="mt-1 font-mono text-sm font-semibold text-blue-400">
+                    {relevance}%
+                  </p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </section>
   );
 }
