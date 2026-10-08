@@ -1,95 +1,90 @@
-export const audienceFlowDocs = `
-# AudienceFlow Product Documentation
+export type AudienceFlowDoc = {
+  id: string;
+  title: string;
+  category: string;
+  content: string;
+};
 
-AudienceFlow is a fictional SaaS audience data platform that helps companies ingest customer data, build audiences, and activate those audiences to advertising platforms.
+export const audienceFlowDocs: AudienceFlowDoc[] = [
+  {
+    id: "s3-ingestion",
+    title: "AWS S3 Batch Ingestion",
+    category: "Data Ingestion",
+    content: `
+AudienceFlow supports batch ingestion of CSV files from AWS S3.
 
-## Batch Data Ingestion
+Customers may configure imports to run daily.
 
-AudienceFlow supports batch customer-data ingestion through:
+Each CSV file may contain up to 5 million customer records.
 
-- AWS S3
-- SFTP
+Supported files must follow the AudienceFlow CSV schema and include
+a supported customer identifier.
 
-Supported file format:
+Audience processing typically completes within 2 hours after a
+successfully processed batch file.
+    `,
+  },
 
-- CSV
+  {
+    id: "security",
+    title: "Data Security and Encryption",
+    category: "Security",
+    content: `
+AudienceFlow requires TLS 1.2 or higher for data transmitted to the platform.
 
-Batch files may contain up to 5 million customer records per file.
+Customer data stored by AudienceFlow is encrypted at rest using AES-256.
 
-Imports can be scheduled:
+Customer-managed encryption keys are not currently supported.
 
-- Hourly
-- Daily
-- Weekly
+SOC 2 Type II certification status is not documented in this guide.
+    `,
+  },
 
-AudienceFlow validates incoming files for formatting errors and required fields before processing.
+  {
+    id: "api",
+    title: "Customer Update API",
+    category: "API",
+    content: `
+AudienceFlow provides a REST API for updating individual customer records.
 
-## Data Security
+API requests use JSON request and response bodies.
 
-Data transferred to AudienceFlow is encrypted in transit using TLS 1.2 or higher.
+Authentication is performed using API keys sent in the Authorization header.
 
-Customer data stored by AudienceFlow is encrypted at rest using AES-256 encryption.
+The API supports creating and updating customer records.
 
-## Audience Processing
+The API is subject to rate limits.
 
-AudienceFlow can perform:
+Real-time processing latency is not guaranteed.
+    `,
+  },
 
-- File validation
-- Record deduplication
-- Identifier matching
-- Audience creation and updates
+  {
+    id: "destinations",
+    title: "Audience Activation Destinations",
+    category: "Activation",
+    content: `
+AudienceFlow can activate processed audiences to supported advertising platforms.
 
-After a batch file has been successfully processed, audience activation typically completes within 2 hours.
+AdSphere DSP is a supported destination.
 
-## Destination Platforms
+Audience activation typically completes within 2 hours after audience
+processing has completed.
 
-AudienceFlow currently supports audience activation to:
+Activation timing represents typical performance and is not a guaranteed SLA.
+    `,
+  },
 
-- AdSphere DSP
-- Meta
-- Google Ads
+  {
+    id: "webhooks",
+    title: "Webhook Notifications",
+    category: "Integrations",
+    content: `
+AudienceFlow does not currently support outbound webhook notifications
+when audience processing completes.
 
-AdSphere DSP is a fictional advertising platform used for this demonstration.
-
-## REST API
-
-AudienceFlow provides a REST API for incremental customer-record updates.
-
-The API supports:
-
-- Creating customer records
-- Updating customer records
-- Deleting customer records
-
-Authentication uses a bearer API key sent in the Authorization header.
-
-Example:
-
-Authorization: Bearer YOUR_API_KEY
-
-The API accepts and returns JSON.
-
-The API rate limit is 1,000 requests per minute.
-
-API updates are typically processed within 5 minutes.
-
-## Webhooks
-
-AudienceFlow does not currently support outbound webhooks.
-
-Customers requiring event-driven notifications must use another workflow or periodically check processing status through supported interfaces.
-
-## Important Sales Engineering Guidance
-
-Do not claim that a customer requirement is supported unless the capability is explicitly documented above.
-
-If the documentation does not contain enough information to determine whether a requirement can be met, identify it as an open question requiring additional discovery.
-
-Distinguish between:
-
-- Supported capabilities
-- Unsupported capabilities
-- Requirements requiring additional discovery
-
-Do not invent product functionality, limits, integrations, security certifications, or service-level agreements that are not documented.
-`;
+Customers requiring processing status updates should periodically check
+processing status using supported platform interfaces.
+    `,
+  },
+];

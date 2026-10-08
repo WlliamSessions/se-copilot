@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { audienceFlowDocs } from "@/app/data/audienceflow-docs";
+import { retrieveRelevantDocs } from "../../data/retrieval";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -17,33 +17,51 @@ export async function POST(request: Request) {
       );
     }
 
+    const relevantDocs = await retrieveRelevantDocs(requirements);
+
+    const documentationContext = relevantDocs
+      .map(
+        (doc) => `
+DOCUMENT: ${doc.title}
+CATEGORY: ${doc.category}
+
+${doc.content}
+`
+      )
+      .join("\n---\n");
+
     const response = await openai.responses.create({
       model: "gpt-6-luna",
+      input: `
+You are a Sales Engineer analyzing customer requirements against the
+documentation for a fictional SaaS product called AudienceFlow.
 
-      input: `You are a Sales Engineer for AudienceFlow.
+Use ONLY the AudienceFlow documentation provided below when determining
+whether a product capability is supported.
 
-Your job is to analyze customer requirements using the AudienceFlow product documentation provided below.
+Do not invent product capabilities.
 
-Use the documentation as the source of truth.
+For each customer requirement:
 
-Rules:
-- Do not invent AudienceFlow capabilities.
-- Mark a requirement as "Supported" only when the documentation explicitly supports it.
-- Mark a requirement as "Unsupported" when the documentation explicitly states that it is not supported.
-- Mark a requirement as "Needs Discovery" when the documentation does not provide enough information to determine support.
-- Explain why each requirement received its status.
-- Identify important technical considerations.
-- Generate useful follow-up discovery questions.
-- Identify risks, gaps, assumptions, or unresolved issues.
+- Use "Supported" only when the documentation clearly confirms the capability.
+- Use "Unsupported" only when the documentation clearly states that the
+  capability is not supported.
+- Use "Needs Discovery" when the documentation does not provide enough
+  information to determine support.
 
-AUDIENCEFLOW PRODUCT DOCUMENTATION:
+Explain the reasoning behind each classification.
 
-${audienceFlowDocs}
+Identify technical considerations, discovery questions, and risks or
+open questions that a Sales Engineer should investigate.
 
 CUSTOMER REQUIREMENTS:
 
-${requirements}`,
+${requirements}
 
+AUDIENCEFLOW DOCUMENTATION:
+
+${documentationContext}
+`,
       text: {
         format: {
           type: "json_schema",
@@ -55,7 +73,6 @@ ${requirements}`,
               overallAssessment: {
                 type: "string",
               },
-
               requirementAnalysis: {
                 type: "array",
                 items: {
@@ -66,39 +83,28 @@ ${requirements}`,
                     },
                     status: {
                       type: "string",
-                      enum: [
-                        "Supported",
-                        "Unsupported",
-                        "Needs Discovery",
-                      ],
+                      enum: ["Supported", "Unsupported", "Needs Discovery"],
                     },
                     explanation: {
                       type: "string",
                     },
                   },
-                  required: [
-                    "requirement",
-                    "status",
-                    "explanation",
-                  ],
+                  required: ["requirement", "status", "explanation"],
                   additionalProperties: false,
                 },
               },
-
               technicalConsiderations: {
                 type: "array",
                 items: {
                   type: "string",
                 },
               },
-
               discoveryQuestions: {
                 type: "array",
                 items: {
                   type: "string",
                 },
               },
-
               risks: {
                 type: "array",
                 items: {
@@ -106,7 +112,6 @@ ${requirements}`,
                 },
               },
             },
-
             required: [
               "overallAssessment",
               "requirementAnalysis",
@@ -114,7 +119,6 @@ ${requirements}`,
               "discoveryQuestions",
               "risks",
             ],
-
             additionalProperties: false,
           },
         },
@@ -125,6 +129,12 @@ ${requirements}`,
 
     return Response.json({
       analysis,
+      retrievedDocs: relevantDocs.map((doc) => ({
+        id: doc.id,
+        title: doc.title,
+        category: doc.category,
+        score: doc.score,
+      })),
     });
   } catch (error) {
     console.error("Analysis error:", error);
