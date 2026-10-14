@@ -1,3 +1,4 @@
+
 import OpenAI from "openai";
 import { retrieveRelevantDocs } from "../../data/retrieval";
 
@@ -5,22 +6,45 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+const MAX_REQUIREMENTS_LENGTH = 5000;
+
 export async function POST(request: Request) {
+  let body: unknown;
+
   try {
-    const body = await request.json();
+    body = await request.json();
+  } catch {
+    return Response.json(
+      { error: "Please provide a valid JSON request." },
+      { status: 400 }
+    );
+  }
 
-    const requirements =
-      typeof body.requirements === "string"
-        ? body.requirements.trim()
-        : "";
+  const requirements =
+    body &&
+    typeof body === "object" &&
+    "requirements" in body &&
+    typeof body.requirements === "string"
+      ? body.requirements.trim()
+      : "";
 
-    if (!requirements) {
-      return Response.json(
-        { error: "Customer requirements are required." },
-        { status: 400 }
-      );
-    }
+  if (!requirements) {
+    return Response.json(
+      { error: "Customer requirements are required." },
+      { status: 400 }
+    );
+  }
 
+  if (requirements.length > MAX_REQUIREMENTS_LENGTH) {
+    return Response.json(
+      {
+        error: `Customer requirements must be ${MAX_REQUIREMENTS_LENGTH} characters or fewer.`,
+      },
+      { status: 400 }
+    );
+  }
+
+  try {
     const relevantDocs = await retrieveRelevantDocs(requirements);
 
     const documentationContext =
@@ -39,6 +63,7 @@ ${doc.content}
 
     const response = await openai.responses.create({
       model: "gpt-6-luna",
+      max_output_tokens: 6000,
       input: `
 You are a Sales Engineer analyzing customer requirements against the
 documentation for a fictional SaaS product called AudienceFlow.
@@ -95,13 +120,21 @@ ${documentationContext}
                     },
                     status: {
                       type: "string",
-                      enum: ["Supported", "Unsupported", "Needs Discovery"],
+                      enum: [
+                        "Supported",
+                        "Unsupported",
+                        "Needs Discovery",
+                      ],
                     },
                     explanation: {
                       type: "string",
                     },
                   },
-                  required: ["requirement", "status", "explanation"],
+                  required: [
+                    "requirement",
+                    "status",
+                    "explanation",
+                  ],
                   additionalProperties: false,
                 },
               },
@@ -136,6 +169,15 @@ ${documentationContext}
         },
       },
     });
+
+    if (response.status !== "completed" || !response.output_text) {
+      console.error("Incomplete OpenAI response:", response.status);
+
+      return Response.json(
+        { error: "The analysis could not be completed. Please try again." },
+        { status: 502 }
+      );
+    }
 
     const analysis = JSON.parse(response.output_text);
 
